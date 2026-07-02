@@ -1,0 +1,21 @@
+# The receivers section specifies that the OpenTelemetry protocol (OTLP) will be used to receive data over GRPC and HTTP.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+# exporters defines that telemetry data is logged to the console (debug), and sent to a zipkin server (defined below in docker-compose.yml).
+exporters:
+  debug:
+  zipkin:
+    endpoint: "http://zipkin:9411/api/v2/spans"
+
+# The service section ties everything together, defining a traces pipeline receiving data through our otlp receiver and exporting data to zipkin and via logging.
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [zipkin, debug]

@@ -1,7 +1,7 @@
 from google import genai
 from config import API_KEY
 
-cliente = genai.Client(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY)
 
 peticion='Hola escribe si estas recibiendo mi peticion con un si o un no.'
 
