@@ -1,6 +1,7 @@
 services:
   zipkin:
     image: openzipkin/zipkin
+    container_name: tfg_zipkin
     ports:
       - "9411:9411"
     depends_on: [otel-collector]
@@ -15,6 +16,7 @@ services:
       - internal
   server:
     image: chromadb/chroma
+    container_name: tfg_chroma
     volumes:
       - chroma_data:/data
     ports:
@@ -27,9 +29,22 @@ services:
     depends_on:
       - otel-collector
       - zipkin
-
+  postgres:
+    image: postgres:15-alpine
+    container_name: tfg_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: tfg_dataset
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 networks:
   internal:
 
 volumes:
   chroma_data:
+  postgres_data:
