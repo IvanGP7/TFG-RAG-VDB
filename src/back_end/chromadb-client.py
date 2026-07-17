@@ -1,41 +1,20 @@
-import string
 import chromadb
 from chromadb.types import Collection
-
-def add_data_to_chromadb(collection: Collection):
-    # Chroma convertirá automáticamente el texto en vectores/embeddings
-    collection.add(
-        documents=["El cielo es azul y bonito", "Me encanta comer pizza de queso", "El mar es profundo y azul"],
-        metadatas=[{"tema": "naturaleza"}, {"tema": "comida"}, {"tema": "naturaleza"}],
-        ids=["doc1", "doc2", "doc3"]
-    )
-    print("Datos insertados!")
-    
 
 if __name__ == "__main__":
     # Conectamos al servidor ChromaDB
     client = chromadb.HttpClient(host='localhost', port=8000)
+    # Listar todas las colecciones existentes
+    colecciones = client.list_collections()
+    nombres_colecciones = [col.name for col in colecciones]
+    print(f"Colecciones actuales en la base de datos: {nombres_colecciones}")
 
-    # Creamos o obtenemos una colección llamada "my_collection"
-    collection = client.get_or_create_collection("my_collection")
+    # Comprobar si la colección tiene datos
+    nombre_tu_coleccion = "tfg_vectores"
 
-    #add_data_to_chromadb(collection)
-
-    # Realizamos busqueda semántica
-    resultado = collection.query(
-        query_texts=["Me gusta observar el oceano"],
-        n_results=1
-    )
-
-    print("Resultado de la búsqueda:")
-    for key in resultado:
-        print(key)
-        if resultado[key] is not None:
-            for value in resultado[key]:
-                if value is not dict:
-                    print("- ", value)
-                else:
-                    for item in value:
-                        print("- ", item)
-        else:
-            print("- None")
+    if nombre_tu_coleccion in nombres_colecciones:
+        coleccion = client.get_collection(name=nombre_tu_coleccion)
+        cantidad = coleccion.count()
+        print(f"La colección '{nombre_tu_coleccion}' tiene {cantidad} vectores almacenados.")
+    else:
+        print(f"La colección '{nombre_tu_coleccion}' NO existe. ¡Tu base de datos está completamente limpia para empezar!")
