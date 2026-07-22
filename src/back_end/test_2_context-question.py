@@ -76,7 +76,7 @@ def ejecutar_benchmark_definitivo():
                 aciertos_top5 += 1
 
     print("\n" + "="*50)
-    print("    RESULTADOS DEL BENCHMARK (PREGUNTAS ÚNICAS)")
+    print("   RESULTADOS DEL BENCHMARK (PREGUNTAS ÚNICAS)")
     print("="*50)
     print(f"Total de preguntas únicas evaluadas: {total_preguntas:,}")
     print("-" * 50)
