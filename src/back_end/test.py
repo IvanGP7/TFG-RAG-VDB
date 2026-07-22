@@ -1,6 +1,7 @@
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 import chromadb
+from tqdm import tqdm
 
 if __name__ == "__main__":
     print("1. Cargando datos y aislando las primeras 50 filas...")
@@ -9,7 +10,7 @@ if __name__ == "__main__":
     df_unicos = df.drop_duplicates(subset=['context']).copy()
     
     # Tomamos las 50 primeras para coincidir con la base de datos
-    df_prueba = df_unicos.head(50).copy()
+    df_prueba = df_unicos.copy()
     
     # Recreamos la columna doc_id EXACTAMENTE igual que hicimos al insertarlos
     df_prueba['doc_id'] = [f"doc_{i}" for i in range(len(df_prueba))]
@@ -30,27 +31,24 @@ if __name__ == "__main__":
     coleccion = client.get_collection(name='tfg_vectores')
 
     print("4. Realizando búsqueda semántica masiva en ChromaDB (Top-5)...")
-    # Pedimos los 5 vectores más similares en lugar de 1
-    resultados = coleccion.query(
-        query_embeddings=vectores_preguntas,
-        n_results=5 
-    )
-
-    # 5. EVALUACIÓN Y HIT RATE @ K
-    print("\n" + "="*40)
-    print(" 📊 RESULTADOS DEL BENCHMARK (Top-1, Top-3, Top-5)")
-    print("="*40)
     
     total = len(preguntas)
     aciertos_top1 = 0
     aciertos_top3 = 0
     aciertos_top5 = 0
-    
-    for i in range(total):
+
+    for i in tqdm(range(total), desc="Evaluando preguntas", unit="preg"):
+        
+        # Le enviamos solo 1 vector a ChromaDB en cada iteración
+        resultados = coleccion.query(
+            query_embeddings=[vectores_preguntas[i]], 
+            n_results=5 
+        )
+        
         id_correcto = ids_esperados[i]
         
-        # Ahora resultados['ids'][i] es una lista con los 5 mejores IDs
-        ids_recuperados = resultados['ids'][i] 
+        # Como solo hemos enviado 1 pregunta, los resultados están en la posición [0]
+        ids_recuperados = resultados['ids'][0] 
         
         # Comprobamos si acertó en la primera opción
         if id_correcto == ids_recuperados[0]:
@@ -63,7 +61,11 @@ if __name__ == "__main__":
         # Comprobamos si el correcto estaba entre los 5 primeros
         if id_correcto in ids_recuperados[:5]:
             aciertos_top5 += 1
-            
+
+    # 5. EVALUACIÓN Y HIT RATE @ K
+    print("\n" + "="*40)
+    print(" 📊 RESULTADOS DEL BENCHMARK (Top-1, Top-3, Top-5)")
+    print("="*40)
     print(f"✅ Hit Rate @ 1 (Tasa de Acierto Top-1): {(aciertos_top1 / total) * 100}%")
     print(f"✅ Hit Rate @ 3 (Tasa de Acierto Top-3): {(aciertos_top3 / total) * 100}%")
     print(f"✅ Hit Rate @ 5 (Tasa de Acierto Top-5): {(aciertos_top5 / total) * 100}%")

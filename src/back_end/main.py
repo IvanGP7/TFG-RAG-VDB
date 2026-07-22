@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import chromadb
 from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
 
 def carga_de_datos():
     #Limpiar contextos de los datos y crear un id unico para cada fila
@@ -10,7 +11,7 @@ def carga_de_datos():
     df_unicos = df.drop_duplicates(subset=['context']).copy()
     df_unicos = df_unicos[['title', 'context']]
     df_unicos['doc_id'] = [f"doc_{i}" for i in range(len(df_unicos))]
-    df_prueba = df_unicos.head(50)
+    df_prueba = df_unicos
     return df_prueba
 
 
@@ -36,19 +37,28 @@ def conectar_a_chromadb(df_prueba: pd.DataFrame):
     # Usamos el mismo modelo embedding para liberar faena dentro del contenedor
     embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    for index, row in df_prueba.iterrows():
-        # Tranformar contexto en vectores
-        vector = embedding_model.encode(row['context']).tolist()
-
-        # Añadir el vector del context y el id de postgres a Chroma
+    # Configuración del lote (Batch)
+    batch_size = 100
+    
+    print(f"Iniciando inserción por lotes de {batch_size} en {batch_size}...")
+    
+    # tqdm crea la barra de progreso verde
+    for i in tqdm(range(0, len(df_prueba), batch_size), desc="Insertando en ChromaDB"):
+        lote = df_prueba.iloc[i:i+batch_size]
+        
+        # 1. Preparar las listas para el lote entero
+        textos = lote['context'].tolist()
+        ids = lote['doc_id'].tolist()
+        metadatos = [{"titulo": row['title'], "postgres_table": "documentos_squad", "postgres_id": row['doc_id']} for _, row in lote.iterrows()]
+        
+        # 2. Calcular los embeddings de los 100 textos a la vez (mucho más eficiente)
+        vectores = embedding_model.encode(textos).tolist()
+        
+        # 3. Insertar el lote entero en ChromaDB con una sola petición HTTP
         coleccion.add(
-            ids=[row['doc_id']],
-            embeddings=[vector],
-            metadatas=[{
-                "titulo":row['title'],
-                "postgres_table": "documentos_squad",
-                "postgres_id": row['doc_id']
-            }]
+            ids=ids,
+            embeddings=vectores,
+            metadatas=metadatos
         )
 
     print("Vectores guardados en ChromaDB!")

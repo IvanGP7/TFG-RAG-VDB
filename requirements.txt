@@ -5,6 +5,7 @@ google-genai==2.10.0
 # Dependencias para Chromadb
 chromadb==1.5.9
 sentence-transformers==5.14.1
+tqdm==4.68.4
 
 # Trabajar con el dataset .parquet
 pandas==3.0.3
