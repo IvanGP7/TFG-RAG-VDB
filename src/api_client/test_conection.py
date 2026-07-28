@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine, text
 import pandas as pd
 from google import genai
-from config import API_KEY
+from dotenv import API_KEY
 
 def vector_question(question):
     model = SentenceTransformer('all-MiniLM-L6-v2')
