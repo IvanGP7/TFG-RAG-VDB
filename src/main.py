@@ -7,47 +7,51 @@ import time
 from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric, ContextualRecallMetric
 from deepeval.test_case import LLMTestCase
 
-from api_client.api_functions import api_queston
-from back_end.rag_functions import vector_question, get_top_5_contexts, get_contexts_from_postgresql
+from api_client.api_functions import api_question
+from back_end.rag_functions import get_context_list_from_question as rag_model
 
 from dotenv import load_dotenv
 load_dotenv()
 
+CLOSEST_VECTOR = 5
+MAX_TEST = 5
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_KEY")
 cliente_openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-def ejecutar_evaluacion_masiva():
-    print("1. Cargando 30 preguntas del dataset original...")
+def get_dataframe_set():
+    print("1. Cargando preguntas del dataset original...")
     df_original = pd.read_parquet('data_test/train-00000-of-00001.parquet', engine='fastparquet')
     df_original = df_original.drop_duplicates(subset=['question'])
-    df_muestra = df_original.sample(n=30, random_state=47).reset_index(drop=True)
+    df_muestra = df_original.sample(n=MAX_TEST, random_state=47).reset_index(drop=True)
+    return df_muestra
+
+def results_api(df_muestra):
 
     casos_de_prueba = []
     introduccion = "If the answer isn't clear from the context, explicitly say, “I don't have enough information”; don't make anything up. Question: "
-    print("2. 🤖 Gemini está haciendo el examen lentamente para no pagar (Tardará ~7 mins)...")
+
+    print(f"2. LLM está haciendo las respuestas de {len(df_muestra)} test...")
     for index, row in tqdm(df_muestra.iterrows(), total=len(df_muestra)):
 
         pregunta = row['question']
         respuesta_esperada = row['answers.text'][0] 
         
-        # --- FASE RETRIEVER ---
-        v = vector_question(pregunta)
-        top_5_ids = get_top_5_contexts(v)
-        contexts_df = get_contexts_from_postgresql(top_5_ids)
-        context_list = contexts_df['context'].tolist()
-        
-        # --- FASE GENERATOR ---
-        result_obj = api_queston(introduccion + pregunta, context_list)
+        # Obtenemos el contenido a traves de la pregunta con el parametro de vectores
+        context_list = rag_model(pregunta, CLOSEST_VECTOR)
+
+        # Mejoramos la respuesta a traves de una introduccion
+        result_obj = api_question(introduccion + pregunta, context_list)
         respuesta_generada = result_obj.text if result_obj != 0 else "Error"
         
-        # --- EMPAQUETADO ---
+
         #print(f"PREGUNTA: {pregunta}\n")
         #print(respuesta_generada)
         #for n in context_list:
         #    print(f"CONTEXTO: {n}\n")
-
         #print(f"RESPUESTA ESPERADA: {respuesta_esperada}\n")
+
+        # Empaquetamos los resultados junto con una respueta combinada con un prompt para evitar de respuestas muy tajantes
         added_promt=f"The correct answer to the question '{pregunta}' is: {respuesta_esperada}"
         test_case = LLMTestCase(
             input=pregunta,
@@ -56,11 +60,18 @@ def ejecutar_evaluacion_masiva():
             expected_output=added_promt
         )
         casos_de_prueba.append(test_case)
-        
-        # ⚠️ EL FRENO ANTI-BANEOS DE GOOGLE (15 segundos = 4 peticiones/min)
-        #time.sleep(15) 
 
-    print("\n3. ⚖️ OpenAI evaluando en modo Low-Cost (gpt-4o-mini)...")
+    return casos_de_prueba
+    
+
+def ejecutar_evaluacion_masiva():
+
+    # Obtenemos el dataset de pruebas
+    df_muestra = get_dataframe_set()
+    # Obtenemos los resultados y los datos junto co los contextos
+    casos_de_prueba = results_api(df_muestra)
+
+    print("\n3. OpenAI evaluando el RAG (gpt-4o-mini)...")
     
     # ⚠️ Forzamos a DeepEval a usar el modelo súper barato
     modelo_barato = "gpt-4o-mini"

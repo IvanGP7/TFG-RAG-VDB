@@ -8,7 +8,7 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_KEY")
 cliente_openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-def api_queston(question, context: list):
+def api_question(question, context: list):
     peticion = f"Use this information:\n{' '.join(context)}\n\nTo asnwer this question concisely: {question}"
     try:
         response = cliente_openai.chat.completions.create(
