@@ -16,7 +16,7 @@ from back_end.rag_functions import get_context_list_from_question as rag_model
 from dotenv import load_dotenv
 load_dotenv()
 
-MAX_TEST = 5
+MAX_TEST = 10000
 CLOSEST_VECTOR = 5
 BATCH_SIZE = 10
 
@@ -84,7 +84,8 @@ def evaluacion_main():
     )
 
     csv_data = []
-    
+    fail_counter = 0
+    error_log = []
     # Bucle secuencial (Uno a uno para evitar Timeouts)
     for i in range(0, len(casos_de_prueba), BATCH_SIZE):
 
@@ -114,6 +115,13 @@ def evaluacion_main():
                     print(f"   Error al extraer datos: {ex_interna}")
             
         except Exception as e:
+            fail_counter += 1
+            error_log.append({
+            'index': i + 1,
+            'pregunta': result,
+            'tipo_error': type(e).__name__,
+            'mensaje_error': str(e)
+        })
             print(f"[!] Error al evaluar la pregunta {i+1}: {e}")
 
     if csv_data:
@@ -125,11 +133,29 @@ def evaluacion_main():
         
         print("\n" + "="*25)
         print(f"[+] ¡Datos guardados con éxito en '{nombre_archivo}'!")
+        print(f"[+] Preguntas totales ejecutadas: {MAX_TEST}")
         
         # Calculamos la nota media para imprimirla por terminal
         nota_media = df_resultados['Nota_Correctness'].mean()
+        aprobados = len(df_resultados[df_resultados['Nota_Correctness'] >= 0.5])
+        porcentaje_aprobados = (aprobados / len(df_resultados)) * 100
         print(f"[*] Nota Media General (Correctness): {nota_media:.2f} / 1.00")
+        print(f"[*] Test aprobados (Correctness): {porcentaje_aprobados:.2f}")
+        print(f"[*] Test fallidos por conexión (OpenAI): {fail_counter}")
         print("="*25)
 
+    if fail_counter > 0:
+        with open("output.txt", "w", encoding="utf-8") as f:
+            f.write(f"=== REPORTE DE ERRORES RAG BENCHMARK ===\n")
+            f.write(f"Total de fallos capturados: {fail_counter}\n")
+            f.write("=" * 50 + "\n\n")
+            
+            for error in error_log:
+                f.write(f"[-] Test #{error['index']}\n")
+                f.write(f"    Pregunta:      {error['pregunta']}\n")
+                f.write(f"    Tipo de error: {error['tipo_error']}\n")
+                f.write(f"    Detalle:       {error['mensaje_error']}\n")
+                f.write("-" * 50 + "\n")
+            
 if __name__ == "__main__":
     evaluacion_main()

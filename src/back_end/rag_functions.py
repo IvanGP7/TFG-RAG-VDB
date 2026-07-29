@@ -4,13 +4,13 @@ from sqlalchemy import create_engine, text
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-
+client = chromadb.HttpClient(host='localhost', port=8000)
 
 def vector_question(question: str, model: SentenceTransformer):
     return model.encode([question], show_progress_bar=False).tolist()
 
 def get_top_contexts(vector: list, number_context: int):
-    client = chromadb.HttpClient(host='localhost', port=8000)
+    
     collection = client.get_collection(name='tfg_vectores')
     results = collection.query(query_embeddings=vector, n_results=number_context)
     return results['ids'][0]
