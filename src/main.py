@@ -2,10 +2,13 @@ import os
 import pandas as pd
 from openai import OpenAI
 from tqdm import tqdm
-import time
 
-from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric, ContextualRecallMetric
-from deepeval.test_case import LLMTestCase
+from deepeval import evaluate
+from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+from deepeval.metrics import GEval
+from deepeval.metrics.utils import SingleTurnParams
+
+from sentence_transformers import SentenceTransformer
 
 from api_client.api_functions import api_question
 from back_end.rag_functions import get_context_list_from_question as rag_model
@@ -13,11 +16,13 @@ from back_end.rag_functions import get_context_list_from_question as rag_model
 from dotenv import load_dotenv
 load_dotenv()
 
-CLOSEST_VECTOR = 5
 MAX_TEST = 5
+CLOSEST_VECTOR = 5
+BATCH_SIZE = 10
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_KEY")
 cliente_openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+modelo_embeddings = SentenceTransformer('all-MiniLM-L6-v2')
 
 def get_dataframe_set():
     print("1. Cargando preguntas del dataset original...")
@@ -29,7 +34,7 @@ def get_dataframe_set():
 def results_api(df_muestra):
 
     casos_de_prueba = []
-    introduccion = "If the answer isn't clear from the context, explicitly say, “I don't have enough information”; don't make anything up. Question: "
+    introduccion = "Answer briefly and concisely as you can with the fewer number of words/numbers. Question: "
 
     print(f"2. LLM está haciendo las respuestas de {len(df_muestra)} test...")
     for index, row in tqdm(df_muestra.iterrows(), total=len(df_muestra)):
@@ -38,18 +43,11 @@ def results_api(df_muestra):
         respuesta_esperada = row['answers.text'][0] 
         
         # Obtenemos el contenido a traves de la pregunta con el parametro de vectores
-        context_list = rag_model(pregunta, CLOSEST_VECTOR)
+        context_list = rag_model(pregunta, CLOSEST_VECTOR, modelo_embeddings)
 
         # Mejoramos la respuesta a traves de una introduccion
         result_obj = api_question(introduccion + pregunta, context_list)
         respuesta_generada = result_obj.text if result_obj != 0 else "Error"
-        
-
-        #print(f"PREGUNTA: {pregunta}\n")
-        #print(respuesta_generada)
-        #for n in context_list:
-        #    print(f"CONTEXTO: {n}\n")
-        #print(f"RESPUESTA ESPERADA: {respuesta_esperada}\n")
 
         # Empaquetamos los resultados junto con una respueta combinada con un prompt para evitar de respuestas muy tajantes
         added_promt=f"The correct answer to the question '{pregunta}' is: {respuesta_esperada}"
@@ -63,81 +61,75 @@ def results_api(df_muestra):
 
     return casos_de_prueba
     
-
-def ejecutar_evaluacion_masiva():
-
-    # Obtenemos el dataset de pruebas
+def evaluacion_main():
+# Obtenemos el dataset de pruebas
     df_muestra = get_dataframe_set()
-    # Obtenemos los resultados y los datos junto co los contextos
+    # Obtenemos los resultados y los datos junto con los contextos
     casos_de_prueba = results_api(df_muestra)
 
     print("\n3. OpenAI evaluando el RAG (gpt-4o-mini)...")
+
+    # Metricas de evaluacion del LLM
+    metricas = GEval(
+        name="Correctness",
+        # He mejorado un poco el inglés para que el Juez lo entienda a la perfección
+        criteria="Determine if the 'actual output' contains the core truth of the 'expected output'. It is HIGHLY ACCEPTABLE and encouraged for the 'actual output' to include additional relevant details from the 'retrieval context'. Do NOT penalize the output for being more comprehensive, detailed, or explanatory than the expected output, as long as the core question is answered correctly.",
+        evaluation_params=[
+            LLMTestCaseParams.ACTUAL_OUTPUT, 
+            LLMTestCaseParams.EXPECTED_OUTPUT, 
+            LLMTestCaseParams.RETRIEVAL_CONTEXT
+        ],
+        threshold=0.5,
+        model="gpt-4o-mini"
+    )
+
+    csv_data = []
     
-    # ⚠️ Forzamos a DeepEval a usar el modelo súper barato
-    modelo_barato = "gpt-4o-mini"
-    # 1. Instanciamos a nuestros 3 Jueces
-    juez_fidelidad = FaithfulnessMetric(threshold=0.7, model=modelo_barato, async_mode=False)
-    juez_relevancia = AnswerRelevancyMetric(threshold=0.7, model=modelo_barato, async_mode=False)
-    juez_recall = ContextualRecallMetric(threshold=0.7, model=modelo_barato, async_mode=False)
+    # Bucle secuencial (Uno a uno para evitar Timeouts)
+    for i in range(0, len(casos_de_prueba), BATCH_SIZE):
 
-    # Lista para guardar las notas y hacer gráficas luego
-    boletin_notas = []
+        batch = casos_de_prueba[i : i + BATCH_SIZE]
 
-    # 2. EL BUCLE DE CONTROL TOTAL
-    for i, caso in enumerate(casos_de_prueba):
         print(f"\n" + "="*50)
-        print(f"📊 EVALUANDO PREGUNTA {i+1} DE {len(casos_de_prueba)}")
+        print(f"EVALUANDO BATCH {i // BATCH_SIZE} (Preguntas {i+1} a {min(i+ BATCH_SIZE, len(casos_de_prueba))})")
         print("="*50)
-        print(f"PREGUNTA: {caso.input}")
-        for n in caso.retrieval_context:
-            print(f"CONTEXTO: {n}\n")
-        print(f"RESPUESTA GENERADA: {caso.actual_output}")
-        print(f"RESPUESTA ESPERADA: {caso.expected_output}")
+        
+        try:
+            resultados_batch = evaluate(test_cases=batch, metrics=[metricas])
+            lista_resultados = resultados_batch.test_results
 
-        max_reintentos = 1
-        for intento in range(max_reintentos):
-            try:
-                # Obligamos a los jueces a evaluar paso a paso
-                juez_fidelidad.measure(caso)
-                juez_relevancia.measure(caso)
-                juez_recall.measure(caso)
-                
-                # Extraemos las notas exactas (0.0 a 1.0)
-                print(f"✅ Fidelidad: {juez_fidelidad.score}")
-                print(f"✅ Relevancia: {juez_relevancia.score}")
-                print(f"✅ Recall: {juez_recall.score}")
-                
-                # Guardamos los resultados para nuestro TFG
-                boletin_notas.append({
-                    "PREGUNTA": caso.input,
-                    "FIDELIDAD": juez_fidelidad.score,
-                    "RELEVANCIA": juez_relevancia.score,
-                    "RECALL": juez_recall.score,
-                    "MOTIVO_RECALL": juez_recall.reason,
-                    "RESPUESTA GENERADA": caso.actual_output,
-                    "RESPUESTA ESPERADA": caso.expected_output,
-                    "CONTEXTO 1": caso.retrieval_context[0],
-                    "CONTEXTO 2": caso.retrieval_context[1],
-                    "CONTEXTO 3": caso.retrieval_context[2],
-                    "CONTEXTO 4": caso.retrieval_context[3],
-                    "CONTEXTO 5": caso.retrieval_context[4]
+            # Iteramos sobre la lista real de TestResults
+            for result in lista_resultados:
 
-                })
-                break
-            except Exception as e:
-                print(f"⚠️ Intento {intento + 1} fallido por error de red: {type(e).__name__}")
-                
-                # Si es el último intento, nos rendimos de verdad
-                if intento == max_reintentos - 1:
-                    print(f"❌ Error definitivo al evaluar la pregunta {i+1}. Pasamos a la siguiente.")
-                else:
-                    print("⏳ Esperando 3 segundos antes de reintentar...")
-                    time.sleep(3) # Requiere hacer 'import time' arriba del todo en tu archivo
+                try:
+                    csv_data.append({
+                        "Pregunta": result.input,
+                        "Respuesta_Generada": result.actual_output,
+                        "Respuesta_Esperada": result.expected_output,
+                        "Nota_Correctness": result.metrics_data[0].score,
+                        "Justificacion": result.metrics_data[0].reason
+                    })
+                    print(f"   Nota guardada: {result.metrics_data[0].score:.2f}")
+                except Exception as ex_interna:
+                    print(f"   Error al extraer datos: {ex_interna}")
+            
+        except Exception as e:
+            print(f"[!] Error al evaluar la pregunta {i+1}: {e}")
 
-    # (Opcional) Guardar las notas en un Excel para la memoria del TFG
-    df_notas = pd.DataFrame(boletin_notas)
-    df_notas.to_excel("resultados_evaluacion.xlsx", index=False)
-    print("\n¡Resultados guardados en resultados_evaluacion.xlsx!")
+    if csv_data:
+        df_resultados = pd.DataFrame(csv_data)
+        
+        # utf-8-sig garantiza que Excel abra el archivo mostrando las tildes y ñ correctamente
+        nombre_archivo = "resultados_rag.csv"
+        df_resultados.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
+        
+        print("\n" + "="*25)
+        print(f"[+] ¡Datos guardados con éxito en '{nombre_archivo}'!")
+        
+        # Calculamos la nota media para imprimirla por terminal
+        nota_media = df_resultados['Nota_Correctness'].mean()
+        print(f"[*] Nota Media General (Correctness): {nota_media:.2f} / 1.00")
+        print("="*25)
 
 if __name__ == "__main__":
-    ejecutar_evaluacion_masiva()
+    evaluacion_main()

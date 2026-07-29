@@ -6,9 +6,8 @@ from sentence_transformers import SentenceTransformer
 
 
 
-def vector_question(question: str):
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    return model.encode([question]).tolist()
+def vector_question(question: str, model: SentenceTransformer):
+    return model.encode([question], show_progress_bar=False).tolist()
 
 def get_top_contexts(vector: list, number_context: int):
     client = chromadb.HttpClient(host='localhost', port=8000)
@@ -23,8 +22,8 @@ def get_contexts_from_postgresql(top_ids):
         df_contexts = pd.read_sql_query(query, connection, params={"ids": tuple(top_ids)})
     return df_contexts
 
-def get_context_list_from_question(question: str, number_context: int):
-    v = vector_question(question)
+def get_context_list_from_question(question: str, number_context: int, model: SentenceTransformer):
+    v = vector_question(question, model)
     top_ids = get_top_contexts(v, number_context)
     contexts_df = get_contexts_from_postgresql(top_ids)
     context_list = contexts_df['context'].tolist()

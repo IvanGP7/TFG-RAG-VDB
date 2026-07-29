@@ -1,5 +1,6 @@
 import os
 from openai import OpenAI
+from tqdm import tqdm
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,5 +23,5 @@ def api_question(question, context: list):
         resultado.text = response.choices[0].message.content
         return resultado
     except Exception as e:
-        print(f"\n[!] Error de OpenAI en generación: {e}")
+        tqdm.write(f"\n[!] Error de OpenAI en generación: {e}")
         return 0
