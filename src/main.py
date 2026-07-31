@@ -1,4 +1,5 @@
 import os
+import time
 import pandas as pd
 from openai import OpenAI
 from tqdm import tqdm
@@ -16,9 +17,11 @@ from back_end.rag_functions import get_context_list_from_question as rag_model
 from dotenv import load_dotenv
 load_dotenv()
 
-MAX_TEST = 10000
+MAX_TEST = 4000
 CLOSEST_VECTOR = 5
 BATCH_SIZE = 10
+MAX_REINTENTOS = 5
+NAME_CSV = f"resultados_rag_{MAX_TEST}"
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_KEY")
 cliente_openai = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
@@ -46,6 +49,7 @@ def results_api(df_muestra):
         context_list = rag_model(pregunta, CLOSEST_VECTOR, modelo_embeddings)
 
         # Mejoramos la respuesta a traves de una introduccion
+        # Consume entre 300 y 500 tokens
         result_obj = api_question(introduccion + pregunta, context_list)
         respuesta_generada = result_obj.text if result_obj != 0 else "Error"
 
@@ -60,7 +64,37 @@ def results_api(df_muestra):
         casos_de_prueba.append(test_case)
 
     return casos_de_prueba
+
+def create_csv(nombre_archivo_csv):
+    ruta_archivo = f"{nombre_archivo_csv}.csv"
     
+    # Comprobamos si el archivo YA existe en el disco duro
+    if os.path.exists(ruta_archivo):
+        print(f"[*] Archivo existente detectado: '{ruta_archivo}'. Se reanudará la escritura sobre él.")
+        return ruta_archivo
+    
+    # Si no existe, lo creamos y le añadimos la cabecera
+    columnas = ["Pregunta", "Respuesta_Generada", "Respuesta_Esperada", "Nota_Correctness", "Justificacion"]
+    pd.DataFrame(columns=columnas).to_csv(ruta_archivo, mode='w', index=False, encoding='utf-8-sig')
+    print(f"[*] Nuevo archivo creado: '{ruta_archivo}'.")
+    return ruta_archivo
+
+
+def log_error(fail_counter: int, error):
+    with open("output.txt", "w", encoding="utf-8") as f:
+        if fail_counter == 1:
+            f.write(f"=== REPORTE DE ERRORES RAG BENCHMARK ===\n")
+            f.write(f"Total de fallos capturados: {fail_counter}\n")
+            f.write("=" * 50 + "\n\n")
+        
+        
+        f.write(f"[-] Test #{error['index']}\n")
+        f.write(f"    Pregunta:      {error['pregunta']}\n")
+        f.write(f"    Tipo de error: {error['tipo_error']}\n")
+        f.write(f"    Detalle:       {error['mensaje_error']}\n")
+        f.write("-" * 50 + "\n")
+
+
 def evaluacion_main():
 # Obtenemos el dataset de pruebas
     df_muestra = get_dataframe_set()
@@ -83,56 +117,73 @@ def evaluacion_main():
         model="gpt-4o-mini"
     )
 
-    csv_data = []
+    # Creacion del csv para almacenar los resultados
+    nombre_archivo_csv = create_csv(NAME_CSV)
     fail_counter = 0
-    error_log = []
+
+    # Comprobamos si existe cuántas preguntas están ya guardadas en el CSV
+    start_index = 0
+    try:
+        df_existente = pd.read_csv(nombre_archivo_csv)
+        start_index = len(df_existente)
+        if start_index > 0:
+            print(f"[*] Reanudando automáticamente desde la pregunta {start_index + 1} (Lote {start_index // BATCH_SIZE})...")
+    except Exception:
+        start_index = 0
+
     # Bucle secuencial (Uno a uno para evitar Timeouts)
-    for i in range(0, len(casos_de_prueba), BATCH_SIZE):
+    for i in range(start_index, len(casos_de_prueba), BATCH_SIZE):
 
         batch = casos_de_prueba[i : i + BATCH_SIZE]
 
         print(f"\n" + "="*50)
         print(f"EVALUANDO BATCH {i // BATCH_SIZE} (Preguntas {i+1} a {min(i+ BATCH_SIZE, len(casos_de_prueba))})")
         print("="*50)
-        
-        try:
-            resultados_batch = evaluate(test_cases=batch, metrics=[metricas])
-            lista_resultados = resultados_batch.test_results
 
-            # Iteramos sobre la lista real de TestResults
-            for result in lista_resultados:
+        reintentos = 0
+        while reintentos < MAX_REINTENTOS:
+            try:
+                # Consume entre 1200 y 1500 tokens sleep para evitar superar los tokens por minuto
+                time.sleep(2.5)
+                resultados_batch = evaluate(test_cases=batch, metrics=[metricas])
+                lista_resultados = resultados_batch.test_results
 
-                try:
-                    csv_data.append({
-                        "Pregunta": result.input,
-                        "Respuesta_Generada": result.actual_output,
-                        "Respuesta_Esperada": result.expected_output,
-                        "Nota_Correctness": result.metrics_data[0].score,
-                        "Justificacion": result.metrics_data[0].reason
-                    })
-                    print(f"   Nota guardada: {result.metrics_data[0].score:.2f}")
-                except Exception as ex_interna:
-                    print(f"   Error al extraer datos: {ex_interna}")
-            
-        except Exception as e:
-            fail_counter += 1
-            error_log.append({
-            'index': i + 1,
-            'pregunta': result,
-            'tipo_error': type(e).__name__,
-            'mensaje_error': str(e)
-        })
-            print(f"[!] Error al evaluar la pregunta {i+1}: {e}")
+                # Iteramos sobre la lista real de TestResults
+                for result in lista_resultados:
 
-    if csv_data:
-        df_resultados = pd.DataFrame(csv_data)
-        
-        # utf-8-sig garantiza que Excel abra el archivo mostrando las tildes y ñ correctamente
-        nombre_archivo = "resultados_rag.csv"
-        df_resultados.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
-        
+                    try:
+                        result_data = {
+                            "Pregunta": result.input,
+                            "Respuesta_Generada": result.actual_output,
+                            "Respuesta_Esperada": result.expected_output,
+                            "Nota_Correctness": result.metrics_data[0].score,
+                            "Justificacion": result.metrics_data[0].reason
+                        }
+                        pd.DataFrame([result_data]).to_csv(nombre_archivo_csv, mode='a', index=False, header=False, encoding='utf-8-sig')
+                        print(f"   Nota guardada: {result.metrics_data[0].score:.2f}")
+                    except Exception as ex_interna:
+                        print(f"   Error al extraer datos: {ex_interna}")
+                reintentos = MAX_REINTENTOS
+
+            except Exception as e:
+                fail_counter += 1
+                error = {
+                    'index': i + 1,
+                    'pregunta': f"Lote {i // BATCH_SIZE} (Preguntas {i+1} a {min(i + BATCH_SIZE, len(casos_de_prueba))})",
+                    'tipo_error': type(e).__name__,
+                    'mensaje_error': str(e)
+                }
+                log_error(fail_counter, error)
+                print(f"[!] Error capturado en el lote {i // BATCH_SIZE}: {type(e).__name__} - {e}")
+                print(f"[*] Esperando {65 * (reintentos + 1)} segundos antes de reintentar...")
+                reintentos += 1
+                time.sleep(65 * reintentos)
+
+    if nombre_archivo_csv:
+        df_resultados = pd.read_csv(nombre_archivo_csv)
+
         print("\n" + "="*25)
-        print(f"[+] ¡Datos guardados con éxito en '{nombre_archivo}'!")
+        print(f"[+] ¡Datos guardados con éxito en '{nombre_archivo_csv}'!")
         print(f"[+] Preguntas totales ejecutadas: {MAX_TEST}")
         
         # Calculamos la nota media para imprimirla por terminal
@@ -144,18 +195,7 @@ def evaluacion_main():
         print(f"[*] Test fallidos por conexión (OpenAI): {fail_counter}")
         print("="*25)
 
-    if fail_counter > 0:
-        with open("output.txt", "w", encoding="utf-8") as f:
-            f.write(f"=== REPORTE DE ERRORES RAG BENCHMARK ===\n")
-            f.write(f"Total de fallos capturados: {fail_counter}\n")
-            f.write("=" * 50 + "\n\n")
-            
-            for error in error_log:
-                f.write(f"[-] Test #{error['index']}\n")
-                f.write(f"    Pregunta:      {error['pregunta']}\n")
-                f.write(f"    Tipo de error: {error['tipo_error']}\n")
-                f.write(f"    Detalle:       {error['mensaje_error']}\n")
-                f.write("-" * 50 + "\n")
+
             
 if __name__ == "__main__":
     evaluacion_main()

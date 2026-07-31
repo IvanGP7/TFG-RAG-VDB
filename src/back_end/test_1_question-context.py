@@ -64,8 +64,8 @@ if __name__ == "__main__":
 
     # 5. EVALUACIÓN Y HIT RATE @ K
     print("\n" + "="*40)
-    print(" 📊 RESULTADOS DEL BENCHMARK (Top-1, Top-3, Top-5)")
+    print(" RESULTADOS DEL BENCHMARK (Top-1, Top-3, Top-5)")
     print("="*40)
-    print(f"✅ Hit Rate @ 1 (Tasa de Acierto Top-1): {(aciertos_top1 / total) * 100}%")
-    print(f"✅ Hit Rate @ 3 (Tasa de Acierto Top-3): {(aciertos_top3 / total) * 100}%")
-    print(f"✅ Hit Rate @ 5 (Tasa de Acierto Top-5): {(aciertos_top5 / total) * 100}%")
+    print(f"[+] Hit Rate @ 1 (Tasa de Acierto Top-1): {(aciertos_top1 / total) * 100}%")
+    print(f"[+] Hit Rate @ 3 (Tasa de Acierto Top-3): {(aciertos_top3 / total) * 100}%")
+    print(f"[+] Hit Rate @ 5 (Tasa de Acierto Top-5): {(aciertos_top5 / total) * 100}%")

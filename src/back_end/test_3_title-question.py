@@ -65,13 +65,13 @@ def ejecutar_benchmark_por_titulos():
                 aciertos_top5 += 1
 
     print("\n" + "="*50)
-    print(" 📊 RESULTADOS DEL BENCHMARK (POR TÍTULO DE WIKIPEDIA)")
+    print("  RESULTADOS DEL BENCHMARK (POR TÍTULO DE WIKIPEDIA)")
     print("="*50)
     print(f"Total de preguntas únicas evaluadas: {total_preguntas:,}")
     print("-" * 50)
-    print(f"✅ Document Hit Rate @ 1: {(aciertos_top1 / total_preguntas) * 100:.2f}%")
-    print(f"✅ Document Hit Rate @ 3: {(aciertos_top3 / total_preguntas) * 100:.2f}%")
-    print(f"✅ Document Hit Rate @ 5: {(aciertos_top5 / total_preguntas) * 100:.2f}%")
+    print(f"[+] Document Hit Rate @ 1: {(aciertos_top1 / total_preguntas) * 100:.2f}%")
+    print(f"[+] Document Hit Rate @ 3: {(aciertos_top3 / total_preguntas) * 100:.2f}%")
+    print(f"[+] Document Hit Rate @ 5: {(aciertos_top5 / total_preguntas) * 100:.2f}%")
     print("="*50)
 
 if __name__ == "__main__":

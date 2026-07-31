@@ -14,3 +14,6 @@ fastparquet==2026.5.0
 # Dependencias para la PostgreSQL
 sqlalchemy==2.0.51
 psycopg2==2.9.12
+
+
+matplotlib==3.11.1
