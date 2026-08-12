@@ -8,7 +8,7 @@ from rag_functions import get_context_list_from_question
 
 
 if __name__ == '__main__':
-    result_file = r'C:\Users\playe\Documents\Trabajos\TFG-RAG-VDB\src\Resulsts\resultados_rag_1000_2.csv'
+    result_file = r'C:\Users\playe\Documents\Trabajos\TFG-RAG-VDB\src\Resulsts\resultados_rag_4000.csv'
     
     df = pd.read_csv(result_file)
     df_suspensos = df[df['Nota_Correctness'] < 0.5]

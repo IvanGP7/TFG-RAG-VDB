@@ -63,6 +63,18 @@ def ejecutar_benchmark_por_titulos():
                 aciertos_top3 += 1
             if titulo_correcto in titulos_recuperados[:5]:
                 aciertos_top5 += 1
+    # Guardar Resultados
+    resultados = []
+    resultados.append({
+    "Total_Preguntas": total_preguntas,
+    "Hit_Rate_1": f"{(aciertos_top1 / total_preguntas) * 100:.2f}%",
+    "Hit_Rate_2": f"{(aciertos_top3 / total_preguntas) * 100:.2f}%",
+    "Hit_Rate_3": f"{(aciertos_top5 / total_preguntas) * 100:.2f}%"
+    })
+    
+    df_resultados = pd.DataFrame(resultados)
+    # mode='a' para ir añadiendo resultados de otros modelos sin borrar los anteriores
+    df_resultados.to_csv("benchmark_aciertos_titulo.csv", mode='a', index=False, header=True)
 
     print("\n" + "="*50)
     print("  RESULTADOS DEL BENCHMARK (POR TÍTULO DE WIKIPEDIA)")
