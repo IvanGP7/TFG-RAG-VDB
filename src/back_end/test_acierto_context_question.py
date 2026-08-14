@@ -2,6 +2,7 @@ import pandas as pd
 import chromadb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+import os
 
 def preparar_datos_ground_truth(ruta_parquet):
     print("1. Cargando y preparando el Ground Truth desde Pandas...")
@@ -28,9 +29,9 @@ def preparar_datos_ground_truth(ruta_parquet):
     
     return df_evaluacion
 
-def ejecutar_benchmark_definitivo():
+def ejecutar_benchmark_contextos(modelo_embedding:str, ruta_parquet:str):
     # Asegúrate de poner la ruta a tu archivo original
-    ruta_parquet = "data_test/train-00000-of-00001.parquet" 
+    
     
     df_eval = preparar_datos_ground_truth(ruta_parquet)
     
@@ -39,7 +40,7 @@ def ejecutar_benchmark_definitivo():
     total_preguntas = len(preguntas)
     
     print("2. Cargando modelo de Inteligencia Artificial...")
-    modelo = SentenceTransformer('all-MiniLM-L6-v2')
+    modelo = SentenceTransformer(modelo_embedding)
 
     print("3. Conectando a ChromaDB...")
     client = chromadb.HttpClient(host='localhost', port=8000)
@@ -78,6 +79,7 @@ def ejecutar_benchmark_definitivo():
     # Guardar Resultados
     resultados = []
     resultados.append({
+    "Modelo": modelo_embedding,
     "Total_Preguntas": total_preguntas,
     "Hit_Rate_1": f"{(aciertos_top1 / total_preguntas) * 100:.2f}%",
     "Hit_Rate_2": f"{(aciertos_top3 / total_preguntas) * 100:.2f}%",
@@ -85,8 +87,10 @@ def ejecutar_benchmark_definitivo():
     })
     
     df_resultados = pd.DataFrame(resultados)
-    # mode='a' para ir añadiendo resultados de otros modelos sin borrar los anteriores
-    df_resultados.to_csv("benchmark_aciertos_contextos.csv", mode='a', index=False, header=True)
+    nombre_archivo = "benchmark_aciertos_contextos.csv"
+    archivo_existe = os.path.isfile(nombre_archivo)
+
+    df_resultados.to_csv(nombre_archivo, mode='a', index=False, header=not archivo_existe)
 
     print("\n" + "="*50)
     print("   RESULTADOS DEL BENCHMARK (PREGUNTAS ÚNICAS)")
@@ -99,4 +103,6 @@ def ejecutar_benchmark_definitivo():
     print("="*50)
 
 if __name__ == "__main__":
-    ejecutar_benchmark_definitivo()
+    modelo_embedding = 'all-MiniLM-L6-v2'
+    ruta_parquet = "data_test/train-00000-of-00001.parquet" 
+    ejecutar_benchmark_contextos(modelo_embedding, ruta_parquet)

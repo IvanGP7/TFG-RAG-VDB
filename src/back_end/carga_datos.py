@@ -4,10 +4,10 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-def carga_de_datos():
+def carga_de_datos(data_set_parquet:str):
     #Limpiar contextos de los datos y crear un id unico para cada fila
     print("Cargando datos desde el archivo parquet...")
-    df = pd.read_parquet('data_test/train-00000-of-00001.parquet', engine='fastparquet')
+    df = pd.read_parquet(data_set_parquet, engine='fastparquet')
     df_unicos = df.drop_duplicates(subset=['context']).copy()
     df_unicos = df_unicos[['title', 'context']]
     df_unicos['doc_id'] = [f"doc_{i}" for i in range(len(df_unicos))]
@@ -29,13 +29,13 @@ def conectar_a_postgresql(df_prueba: pd.DataFrame):
 
     print("Datos cargados en la base de datos PostgreSQL.")
 
-def conectar_a_chromadb(df_prueba: pd.DataFrame):
+def conectar_a_chromadb(df_prueba: pd.DataFrame, modelo:str):
     # Conexión a la base de datos Chromadb
     client = chromadb.HttpClient(host='localhost', port=8000)
     coleccion = client.get_or_create_collection(name='tfg_vectores')
 
     # Usamos el mismo modelo embedding para liberar faena dentro del contenedor
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model = SentenceTransformer(modelo)
 
     # Configuración del lote (Batch)
     batch_size = 100
@@ -63,15 +63,19 @@ def conectar_a_chromadb(df_prueba: pd.DataFrame):
 
     print("Vectores guardados en ChromaDB!")
 
-
-if __name__ == "__main__":
+def carga_datos(modelo:str, dataset_parquet:str):
     print("Iniciando el proceso de carga de datos y conexión a bases de datos...")
 
-    df_prueba = carga_de_datos()
+    df_prueba = carga_de_datos(dataset_parquet)
     #print(df_prueba)
 
     conectar_a_postgresql(df_prueba)
 
-    conectar_a_chromadb(df_prueba)
+    conectar_a_chromadb(df_prueba, modelo)
 
     print("Creación Arquitectura funcionando")
+
+if __name__ == "__main__":
+    dataset_parquet = 'data_test/train-00000-of-00001.parquet'
+    modelo = 'all-MiniLM-L6-v2'
+    carga_datos(modelo, dataset_parquet)

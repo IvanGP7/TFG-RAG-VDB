@@ -1,2 +1,14 @@
-Total_Preguntas,Hit_Rate_1,Hit_Rate_2,Hit_Rate_3
-87355,59.06%,76.29%,81.73%
+Modelo,Total_Preguntas,Hit_Rate_1,Hit_Rate_2,Hit_Rate_3
+all-mpnet-base-v2,87355,61.40%,79.52%,85.10%
+multi-qa-mpnet-base-dot-v1,87355,60.74%,78.96%,84.66%
+all-distilroberta-v1,87355,63.76%,81.71%,87.24%
+all-MiniLM-L12-v2,87355,58.00%,74.66%,80.01%
+multi-qa-distilbert-cos-v1,87355,62.95%,80.60%,86.04%
+all-MiniLM-L6-v2,87355,59.05%,76.28%,81.72%
+multi-qa-MiniLM-L6-cos-v1,87355,56.43%,73.17%,78.83%
+paraphrase-multilingual-mpnet-base-v2,87355,45.83%,61.21%,66.98%
+paraphrase-albert-small-v2,87355,41.31%,55.29%,60.76%
+paraphrase-multilingual-MiniLM-L12-v2,87355,42.74%,57.45%,63.26%
+paraphrase-MiniLM-L3-v2,87355,41.25%,55.83%,61.64%
+distiluse-base-multilingual-cased-v1,87355,39.25%,54.16%,60.25%
+distiluse-base-multilingual-cased-v2,87355,40.09%,55.32%,61.52%

@@ -2,6 +2,7 @@ import pandas as pd
 import chromadb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+import os
 
 def preparar_datos_titulos(ruta_parquet):
     print("1. Cargando datos originales para extraer preguntas y sus TÍTULOS esperados...")
@@ -13,8 +14,8 @@ def preparar_datos_titulos(ruta_parquet):
     
     return df_evaluacion
 
-def ejecutar_benchmark_por_titulos():
-    ruta_parquet = "data_test/train-00000-of-00001.parquet" 
+def ejecutar_benchmark_titulos(modelo_embedding:str, ruta_parquet:str):
+    
     
     df_eval = preparar_datos_titulos(ruta_parquet)
     
@@ -24,7 +25,7 @@ def ejecutar_benchmark_por_titulos():
     total_preguntas = len(preguntas)
     
     print("2. Cargando modelo de Inteligencia Artificial...")
-    modelo = SentenceTransformer('all-MiniLM-L6-v2')
+    modelo = SentenceTransformer(modelo_embedding)
 
     print("3. Conectando a ChromaDB...")
     client = chromadb.HttpClient(host='localhost', port=8000)
@@ -66,6 +67,7 @@ def ejecutar_benchmark_por_titulos():
     # Guardar Resultados
     resultados = []
     resultados.append({
+    "Modelo": modelo_embedding,
     "Total_Preguntas": total_preguntas,
     "Hit_Rate_1": f"{(aciertos_top1 / total_preguntas) * 100:.2f}%",
     "Hit_Rate_2": f"{(aciertos_top3 / total_preguntas) * 100:.2f}%",
@@ -73,8 +75,9 @@ def ejecutar_benchmark_por_titulos():
     })
     
     df_resultados = pd.DataFrame(resultados)
-    # mode='a' para ir añadiendo resultados de otros modelos sin borrar los anteriores
-    df_resultados.to_csv("benchmark_aciertos_titulo.csv", mode='a', index=False, header=True)
+    nombre_archivo = "benchmark_aciertos_titulo.csv"
+    archivo_existe = os.path.isfile(nombre_archivo)
+    df_resultados.to_csv(nombre_archivo, mode='a', index=False, header=not archivo_existe)
 
     print("\n" + "="*50)
     print("  RESULTADOS DEL BENCHMARK (POR TÍTULO DE WIKIPEDIA)")
@@ -87,4 +90,6 @@ def ejecutar_benchmark_por_titulos():
     print("="*50)
 
 if __name__ == "__main__":
-    ejecutar_benchmark_por_titulos()
+    ruta_parquet = "data_test/train-00000-of-00001.parquet"
+    modelo_embedding='all-MiniLM-L6-v2'
+    ejecutar_benchmark_titulos(modelo_embedding, ruta_parquet)

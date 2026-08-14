@@ -1,2 +1,14 @@
 modelo,textos_procesados,tiempo_total_seg,tiempo_medio_por_texto_seg
-all-MiniLM-L6-v2,1000,13.7785,0.0138
+all-mpnet-base-v2,1000,128.1992,0.1282
+multi-qa-mpnet-base-dot-v1,1000,132.0326,0.132
+all-distilroberta-v1,1000,51.418,0.0514
+all-MiniLM-L12-v2,1000,13.9875,0.014
+multi-qa-distilbert-cos-v1,1000,54.0535,0.0541
+all-MiniLM-L6-v2,1000,14.7124,0.0147
+multi-qa-MiniLM-L6-cos-v1,1000,15.8144,0.0158
+paraphrase-multilingual-mpnet-base-v2,1000,59.542,0.0595
+paraphrase-albert-small-v2,1000,33.7482,0.0337
+paraphrase-multilingual-MiniLM-L12-v2,1000,14.4681,0.0145
+paraphrase-MiniLM-L3-v2,1000,4.0305,0.004
+distiluse-base-multilingual-cased-v1,1000,27.6925,0.0277
+distiluse-base-multilingual-cased-v2,1000,27.3852,0.0274
