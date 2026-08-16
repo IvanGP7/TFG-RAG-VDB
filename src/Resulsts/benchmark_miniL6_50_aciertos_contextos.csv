@@ -1,0 +1,2 @@
+Modelo,Total_Preguntas,Hit_Rate_1,Hit_Rate_3,Hit_Rate_5,Hit_Rate_10,Hit_Rate_15,Hit_Rate_20,Hit_Rate_25,Hit_Rate_30,Hit_Rate_35,Hit_Rate_40,Hit_Rate_45,Hit_Rate_50
+all-MiniLM-L6-v2,87355,59.05%,76.28%,81.72%,87.50%,90.02%,91.51%,92.56%,93.29%,93.81%,94.22%,94.51%,94.77%

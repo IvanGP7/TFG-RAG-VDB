@@ -70,8 +70,8 @@ def ejecutar_benchmark_titulos(modelo_embedding:str, ruta_parquet:str):
     "Modelo": modelo_embedding,
     "Total_Preguntas": total_preguntas,
     "Hit_Rate_1": f"{(aciertos_top1 / total_preguntas) * 100:.2f}%",
-    "Hit_Rate_2": f"{(aciertos_top3 / total_preguntas) * 100:.2f}%",
-    "Hit_Rate_3": f"{(aciertos_top5 / total_preguntas) * 100:.2f}%"
+    "Hit_Rate_3": f"{(aciertos_top3 / total_preguntas) * 100:.2f}%",
+    "Hit_Rate_5": f"{(aciertos_top5 / total_preguntas) * 100:.2f}%"
     })
     
     df_resultados = pd.DataFrame(resultados)

@@ -10,9 +10,7 @@ def limpiar_bases_de_datos():
     #    print("Operación cancelada. Tus datos están a salvo.")
     #    sys.exit()
 
-    # ==========================================
     # 1. LIMPIAR CHROMADB (Contenedor Docker)
-    # ==========================================
     try:
         print("\nConectando a ChromaDB...")
         cliente_chroma = chromadb.HttpClient(host='localhost', port=8000)
@@ -27,9 +25,7 @@ def limpiar_bases_de_datos():
     except Exception as e:
         print(f"Error al limpiar ChromaDB: {e}")
 
-    # ==========================================
     # 2. LIMPIAR POSTGRESQL (Contenedor Docker)
-    # ==========================================
     try:
         print("\nConectando a PostgreSQL...")
         # Usa las credenciales que definiste en tu docker-compose.yml
