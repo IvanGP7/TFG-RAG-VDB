@@ -3,7 +3,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import chromadb
 from sentence_transformers import SentenceTransformer
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
+
+SQL_LINK = os.getenv("NEON_SQL")
 client = chromadb.HttpClient(host='localhost', port=8000)
 
 def vector_question(question: str, model: SentenceTransformer):
@@ -16,7 +21,7 @@ def get_top_contexts(vector: list, number_context: int):
     return results['ids'][0]
 
 def get_contexts_from_postgresql(top_ids):
-    sql_engine = create_engine('postgresql://admin:password123@localhost:5432/tfg_dataset')
+    sql_engine = create_engine(SQL_LINK)
     query = text(f"SELECT doc_id, context FROM documentos_squad WHERE doc_id IN :ids")
     with sql_engine.connect() as connection:
         df_contexts = pd.read_sql_query(query, connection, params={"ids": tuple(top_ids)})

@@ -4,6 +4,13 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+
+SQL_LINK = os.getenv("NEON_SQL")
+
 def carga_de_datos():
     #Limpiar contextos de los datos y crear un id unico para cada fila
     print("Cargando datos desde el archivo parquet...")
@@ -18,7 +25,7 @@ def carga_de_datos():
 def conectar_a_postgresql(df_prueba: pd.DataFrame):
     #Conexion a Postgress
     print("Conectando a la base de datos PostgreSQL...")
-    sql_engine = create_engine('postgresql://admin:password123@localhost:5432/tfg_dataset')
+    sql_engine = create_engine(SQL_LINK)
 
     df_prueba.to_sql('documentos_squad', sql_engine, if_exists='replace', index=False)
     
