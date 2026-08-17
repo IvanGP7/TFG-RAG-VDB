@@ -1,4 +1,4 @@
-Modelo,Total_Preguntas,Hit_Rate_1,Hit_Rate_2,Hit_Rate_3
+Modelo,Total_Preguntas,Hit_Rate_1,Hit_Rate_3,Hit_Rate_5
 all-mpnet-base-v2,87355,81.54%,89.79%,92.20%
 multi-qa-mpnet-base-dot-v1,87355,80.49%,89.47%,92.08%
 all-distilroberta-v1,87355,83.83%,91.62%,93.90%
