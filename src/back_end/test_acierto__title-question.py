@@ -1,7 +1,13 @@
 import pandas as pd
-import chromadb
+import lancedb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+LANCEDB_LINK = os.getenv("LANCEDB_DATABASE")
 
 def preparar_datos_titulos(ruta_parquet):
     print("1. Cargando datos originales para extraer preguntas y sus TÍTULOS esperados...")
@@ -26,9 +32,9 @@ def ejecutar_benchmark_por_titulos():
     print("2. Cargando modelo de Inteligencia Artificial...")
     modelo = SentenceTransformer('all-MiniLM-L6-v2')
 
-    print("3. Conectando a ChromaDB...")
-    client = chromadb.HttpClient(host='localhost', port=8000)
-    coleccion = client.get_collection(name='tfg_vectores')
+    print("3. Conectando a Lancedb...")
+    db = lancedb.connect(LANCEDB_LINK)
+    tabla = db.open_table("tfg_vectores")
 
     print(f"4. Evaluando {total_preguntas} preguntas únicas por TÍTULO...")
     
@@ -43,18 +49,13 @@ def ejecutar_benchmark_por_titulos():
         
         vectores_lote = modelo.encode(lote_preguntas).tolist()
         
-        resultados = coleccion.query(
-            query_embeddings=vectores_lote,
-            n_results=5
-        )
-        
         # Evaluamos extrayendo los metadatos
         for j in range(len(lote_preguntas)):
             titulo_correcto = lote_titulos_esperados[j]
+            vector_actual = vectores_lote[j]
+            resultados = tabla.search(vector_actual).nprobes(10).limit(5).to_list()
             
-            # SINTAXIS CORRECTA DE CHROMADB: 
-            # Sacamos el valor 'titulo' de los 5 diccionarios de metadatos devueltos para esta pregunta
-            titulos_recuperados = [meta['titulo'] for meta in resultados['metadatas'][j]]
+            titulos_recuperados = [meta['titulo'] for meta in resultados]
             
             # Comparamos Strings (Título esperado vs Títulos recuperados)
             if titulo_correcto == titulos_recuperados[0]:

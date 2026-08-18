@@ -1,7 +1,13 @@
 import pandas as pd
-import chromadb
+import lancedb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+LANCEDB_LINK = os.getenv("LANCEDB_DATABASE")
 
 def preparar_datos_ground_truth(ruta_parquet):
     print("1. Cargando y preparando el Ground Truth desde Pandas...")
@@ -41,9 +47,9 @@ def ejecutar_benchmark_definitivo():
     print("2. Cargando modelo de Inteligencia Artificial...")
     modelo = SentenceTransformer('all-MiniLM-L6-v2')
 
-    print("3. Conectando a ChromaDB...")
-    client = chromadb.HttpClient(host='localhost', port=8000)
-    coleccion = client.get_collection(name='tfg_vectores')
+    print("3. Conectando a Lancedb...")
+    db = lancedb.connect(LANCEDB_LINK)
+    tabla = db.open_table("tfg_vectores")
 
     print(f"4. Evaluando {total_preguntas} preguntas únicas...")
     
@@ -58,15 +64,12 @@ def ejecutar_benchmark_definitivo():
         
         vectores_lote = modelo.encode(lote_preguntas).tolist()
         
-        resultados = coleccion.query(
-            query_embeddings=vectores_lote,
-            n_results=5
-        )
-        
         # Comprobación mediante IDs (Matemáticamente infalible y rapidísimo)
         for j in range(len(lote_preguntas)):
             id_correcto = lote_ids_esperados[j]
-            ids_recuperados = resultados['ids'][j] 
+            vector_actual = vectores_lote[j]
+            resultados = tabla.search(vector_actual).nprobes(20).refine_factor(10).limit(5).to_list()
+            ids_recuperados = [meta['id'] for meta in resultados] 
             
             if id_correcto == ids_recuperados[0]:
                 aciertos_top1 += 1

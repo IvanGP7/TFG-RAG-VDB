@@ -1,11 +1,11 @@
-import chromadb
+import lancedb
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-
 SQL_LINK = os.getenv("NEON_SQL")
+LANCEDB_LINK = os.getenv("LANCEDB_DATABASE")
 
 def limpiar_bases_de_datos():
     print("ADVERTENCIA: Este script borrará TODOS los datos insertados.")
@@ -15,20 +15,24 @@ def limpiar_bases_de_datos():
     #    print("Operación cancelada. Tus datos están a salvo.")
     #    sys.exit()
 
-    # 1. LIMPIAR CHROMADB (Contenedor Docker)
+    # 1. LIMPIAR lancerDB
     try:
-        print("\nConectando a ChromaDB...")
-        cliente_chroma = chromadb.HttpClient(host='localhost', port=8000)
-        colecciones = cliente_chroma.list_collections()
+        print("\nConectando a LanceDB...")
+        db = lancedb.connect(LANCEDB_LINK)
         
-        if not colecciones:
-            print(" -> ChromaDB ya está vacío.")
+        # table_names() devuelve una simple lista de textos: ['tfg_vectores']
+        tablas = db.table_names() 
+
+        if not tablas:
+            print(" -> LanceDB ya está vacío.")
         else:
-            for coleccion in colecciones:
-                cliente_chroma.delete_collection(name=coleccion.name)
-                print(f" -> Colección vectorial eliminada: {coleccion.name}")
+            for nombre_tabla in tablas:
+                # nombre_tabla ya es directamente el string "tfg_vectores"
+                print(f" -> Eliminando tabla vectorial: {nombre_tabla}")
+                db.drop_table(nombre_tabla)
+                
     except Exception as e:
-        print(f"Error al limpiar ChromaDB: {e}")
+        print(f"Error al limpiar LanceDB: {e}")
 
     # 2. LIMPIAR POSTGRESQL (Contenedor Docker)
     try:

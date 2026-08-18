@@ -1,7 +1,7 @@
 
 import pandas as pd
 from sqlalchemy import create_engine, text
-import chromadb
+import lancedb
 from sentence_transformers import SentenceTransformer
 import os
 from dotenv import load_dotenv
@@ -9,16 +9,18 @@ load_dotenv()
 
 
 SQL_LINK = os.getenv("NEON_SQL")
-client = chromadb.HttpClient(host='localhost', port=8000)
+LANCEDB_LINK = os.getenv("LANCEDB_DATABASE")
+db = lancedb.connect(LANCEDB_LINK)
 
 def vector_question(question: str, model: SentenceTransformer):
     return model.encode([question], show_progress_bar=False).tolist()
 
 def get_top_contexts(vector: list, number_context: int):
     
-    collection = client.get_collection(name='tfg_vectores')
-    results = collection.query(query_embeddings=vector, n_results=number_context)
-    return results['ids'][0]
+    tabla = db.open_table("tfg_vectores")
+    resultados = tabla.search(vector[0]).limit(number_context).to_list()
+    ids = [resultado['id'] for resultado in resultados]
+    return ids
 
 def get_contexts_from_postgresql(top_ids):
     sql_engine = create_engine(SQL_LINK)
