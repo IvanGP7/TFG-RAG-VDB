@@ -8,6 +8,8 @@ from test_acierto_context_question import ejecutar_benchmark_definitivo
 
 import time
 
+RUTA_S3 = "s3://bucket-s3-tfg-8722/benchmark_aciertos_tiempos.csv"
+
 if __name__ == "__main__":
     print("Iniciando el proceso de limpieza de bases de datos...")
     limpiar_bases_de_datos()
@@ -35,6 +37,7 @@ if __name__ == "__main__":
     })
 
     df_resultados = pd.DataFrame(resultados)
-    nombre_archivo = "benchmark_aciertos_tiempos.csv"
-    archivo_existe = os.path.isfile(nombre_archivo)
-    df_resultados.to_csv(nombre_archivo, mode='a', index=False, header=not archivo_existe)
+    df_resultados.to_csv(RUTA_S3, mode='a', index=False, header=True,storage_options={
+        "key": os.getenv("AWS_ACCESS_KEY_ID"),
+        "secret": os.getenv("AWS_SECRET_ACCESS_KEY")
+    })

@@ -25,7 +25,7 @@ def carga_de_datos():
 
 def conectar_a_postgresql(df_prueba: pd.DataFrame):
     #Conexion a Postgress
-    print("Conectando a la base de datos PostgreSQL...")
+    print("Conectando a la base de datos LanceDB...")
     sql_engine = create_engine(SQL_LINK)
 
     df_prueba.to_sql('documentos_squad', sql_engine, if_exists='replace', index=False)

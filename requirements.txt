@@ -17,3 +17,4 @@ psycopg2==2.9.12
 
 
 matplotlib==3.11.1
+s3fs==2026.7.0

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 LANCEDB_LINK = os.getenv("LANCEDB_DATABASE")
-
+RUTA_S3 = "s3://bucket-s3-tfg-8722/benchmark_aciertos_contextos.csv"
 def preparar_datos_ground_truth(ruta_parquet):
     print("1. Cargando y preparando el Ground Truth desde Pandas...")
     df = pd.read_parquet(ruta_parquet)
@@ -89,7 +89,10 @@ def ejecutar_benchmark_definitivo():
     
     df_resultados = pd.DataFrame(resultados)
     # mode='a' para ir añadiendo resultados de otros modelos sin borrar los anteriores
-    df_resultados.to_csv("benchmark_aciertos_contextos.csv", mode='a', index=False, header=True)
+    df_resultados.to_csv(RUTA_S3, mode='a', index=False, header=True,storage_options={
+        "key": os.getenv("AWS_ACCESS_KEY_ID"),
+        "secret": os.getenv("AWS_SECRET_ACCESS_KEY")
+    })
 
     print("\n" + "="*50)
     print("   RESULTADOS DEL BENCHMARK (PREGUNTAS ÚNICAS)")
