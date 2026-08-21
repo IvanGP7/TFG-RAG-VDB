@@ -2,6 +2,8 @@ import pandas as pd
 import lancedb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+import itertools
+from concurrent.futures import ThreadPoolExecutor
 
 import os
 from dotenv import load_dotenv
@@ -34,7 +36,13 @@ def preparar_datos_ground_truth(ruta_parquet):
     
     return df_evaluacion
 
-def ejecutar_benchmark_definitivo():
+def buscar_en_s3(datos, tabla):
+        id_esperado, vector = datos
+        resultados = tabla.search(vector).nprobes(20).refine_factor(10).limit(5).to_list()
+        ids_recuperados = [meta['id'] for meta in resultados]
+        return id_esperado, ids_recuperados
+
+def ejecutar_benchmark_definitivo(workers):
     # Asegúrate de poner la ruta a tu archivo original
     ruta_parquet = "data_test/train-00000-of-00001.parquet" 
     
@@ -64,19 +72,21 @@ def ejecutar_benchmark_definitivo():
         
         vectores_lote = modelo.encode(lote_preguntas).tolist()
         
-        # Comprobación mediante IDs (Matemáticamente infalible y rapidísimo)
-        for j in range(len(lote_preguntas)):
-            id_correcto = lote_ids_esperados[j]
-            vector_actual = vectores_lote[j]
-            resultados = tabla.search(vector_actual).nprobes(20).refine_factor(10).limit(5).to_list()
-            ids_recuperados = [meta['id'] for meta in resultados] 
+        datos_para_hilos = list(zip(lote_ids_esperados, vectores_lote))
+        
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            resultados_lote = list(executor.map(buscar_en_s3, datos_para_hilos, itertools.repeat(tabla)))
             
-            if id_correcto == ids_recuperados[0]:
-                aciertos_top1 += 1
-            if id_correcto in ids_recuperados[:3]:
-                aciertos_top3 += 1
-            if id_correcto in ids_recuperados[:5]:
-                aciertos_top5 += 1
+        # 4. Comprobación y conteo de aciertos
+        # Lo hacemos fuera de los hilos para evitar condiciones de carrera (Race Conditions)
+        for id_correcto, ids_recuperados in resultados_lote:
+            if len(ids_recuperados) > 0:
+                if id_correcto == ids_recuperados[0]:
+                    aciertos_top1 += 1
+                if id_correcto in ids_recuperados[:3]:
+                    aciertos_top3 += 1
+                if id_correcto in ids_recuperados[:5]:
+                    aciertos_top5 += 1
 
     # Guardar Resultados
     resultados = []
