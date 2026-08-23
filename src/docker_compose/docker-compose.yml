@@ -1,19 +1,4 @@
 services:
-  zipkin:
-    image: openzipkin/zipkin
-    container_name: tfg_zipkin
-    ports:
-      - "9411:9411"
-    depends_on: [otel-collector]
-    networks:
-      - internal
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.111.0
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ${PWD}/otel-collector-config.yaml:/etc/otel-collector-config.yaml
-    networks:
-      - internal
   server:
     image: chromadb/chroma
     container_name: tfg_chroma
@@ -23,12 +8,7 @@ services:
       - "8000:8000"
     networks:
       - internal
-    environment:
-      - CHROMA_OPEN_TELEMETRY__ENDPOINT=http://otel-collector:4317/
-      - CHROMA_OPEN_TELEMETRY__SERVICE_NAME=chroma
-    depends_on:
-      - otel-collector
-      - zipkin
+
   postgres:
     image: postgres:15-alpine
     container_name: tfg_postgres
