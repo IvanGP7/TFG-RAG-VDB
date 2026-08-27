@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 # Optimización y despliegue cloud de sistemas RAG (TFG-RAG-VDB)
 
 Repositorio oficial del Trabajo de Fin de Grado en Ingeniería Informática y Telemática. Este proyecto comprende el diseño, implementación, evaluación empírica y optimización de una arquitectura desacoplada para sistemas de Generación Aumentada por Recuperación (RAG, *Retrieval-Augmented Generation*), transitando desde un prototipo monolítico en local hasta una infraestructura distribuida y elástica en Amazon Web Services (AWS).
