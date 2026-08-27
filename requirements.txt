@@ -1,20 +1,31 @@
-# Conexión del Rag y API del LLM
+# Conexión del pipeline RAG y APIs de generación/evaluación
 langchain==1.3.11
 google-genai==2.10.0
+openai==2.48.0
+deepeval==4.1.4
+python-dotenv==1.2.2
 
-# Dependencias para Chromadb
-sentence-transformers==5.6.0
-tqdm==4.68.4
+# Base de datos vectorial Serverless y dependencias de serialización
 lancedb==0.37.1
+pyarrow==23.0.1
 
-# Trabajar con el dataset .parquet
+# Conectores de almacenamiento en la nube (AWS S3)
+boto3==1.43.73
+s3fs==2026.7.0
+
+# Modelos de Embeddings y cálculo neuronal
+sentence-transformers==5.6.0
+torch==2.13.0
+tqdm==4.68.4
+
+# Persistencia relacional Serverless (Neon PostgreSQL)
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+
+# Procesamiento de datos tabulares y datasets
 pandas==3.0.3
 fastparquet==2026.5.0
 
-# Dependencias para la PostgreSQL
-sqlalchemy==2.0.51
-psycopg2==2.9.12
-
-
+# Generación de gráficos y visualización de resultados
 matplotlib==3.11.1
-s3fs==2026.7.0
+plotly==6.9.0
