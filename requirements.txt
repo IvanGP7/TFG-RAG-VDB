@@ -15,5 +15,9 @@ fastparquet==2026.5.0
 sqlalchemy==2.0.51
 psycopg2==2.9.12
 
+# Framework de evaluación semántica (LLM-as-a-Judge) y API OpenAI
+deepeval==4.1.4
+openai==2.48.0
 
+plotly==6.9.0
 matplotlib==3.11.1
